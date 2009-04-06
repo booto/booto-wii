@@ -6,8 +6,6 @@
 #include <libgen.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <libxml/tree.h>
-#include <libxml/parser.h>
 
 char *strdup(const char *s);
 
@@ -41,73 +39,6 @@ typedef struct
 	uint8_t unpacked;
 } __attribute__((packed)) texture_header;
 
-typedef struct
-{
-	union
-	{
-		uint16_t val;
-		struct
-		{
-			uint8_t a;
-			uint8_t r;
-		} pair;
-	} line1[16];
-	union
-	{
-		uint16_t val;
-		struct
-		{
-			uint8_t b;
-			uint8_t g;
-		} pair;
-	} line2[16];
-} __attribute__((packed)) rgba8_tile;
-
-int convertRGBA8(texture_header *th, FILE *in, char *out_fn)
-{
-	gdImagePtr im = gdImageCreateTrueColor(th->width, th->height);
-
-	if(th == NULL) return -1;
-
-	FILE *out = fopen(out_fn, "wb");
-	if(out == NULL)
-	{
-		gdImageDestroy(im);
-		return -2;
-	}
-
-	gdImageAlphaBlending(im, 0);
-	gdImageSaveAlpha(im, 1);
-
-	fseek(in, th->data_off, SEEK_SET);
-
-	rgba8_tile rt;
-	printf("sizeof(rgba8_tile)=0x%08x\n", sizeof(rgba8_tile));
-	for(size_t y=0; y<th->height; y+=4)
-	{
-		for(size_t x=0; x<th->width; x+=4)
-		{
-			fread(&rt,sizeof(rt), 1, in); 
-			for(size_t i=0; i<16; i++)
-			{
-	//			rt.line1[i].val = ntohs(rt.line1[i].val);
-	//			rt.line2[i].val = ntohs(rt.line2[i].val);
-				int colour = gdImageColorResolveAlpha(im,
-					rt.line1[i].pair.r,
-					rt.line2[i].pair.b,
-					rt.line2[i].pair.g,
-					255-rt.line1[i].pair.a);
-				gdImageSetPixel(im, x+i%4, y+i/4, colour); 
-			}
-		}
-	}
-
-	gdImagePng(im, out);
-
-	fclose(out);
-
-	gdImageDestroy(im);
-}
 
 #define RGB5_FLAG 0x8000
 typedef struct
@@ -142,9 +73,6 @@ int convertRGB5A3(texture_header *th, FILE *in, char *out_fn)
 		gdImageDestroy(im);
 		return -2;
 	}
-
-	gdImageAlphaBlending(im, 0);
-	gdImageSaveAlpha(im, 1);
 
 	fseek(in, th->data_off, SEEK_SET);
 
@@ -208,63 +136,9 @@ const char *tpl_format(int i)
 	return rv;
 }
 
-int convert_xml_to_tpl(xmlDocPtr doc, FILE *output)
-{
-	xmlNodePtr root = xmlDocGetRootElement(doc);
-	xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
-
-	tpl_header tpl_h;
-	tpl_h.magic = 0x30af2000;
-	tpl_h.size = htonl(sizeof(tpl_h));
-
-	xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression("/tpl/texture", xpathCtx);
-	int size = xpathObj->nodeNr;
-	tpl_h.count = htonl(size);
-	fwrite(&tpl_h, sizeof(tpl_h), 1, output);
-
-	texture_offsets *tex_off = calloc(size, sizeof(*tex_off));
-	texture_header *tex_h = calloc(size, sizeof(*tex_h));
-	fwrite(tpl_off, sizeof(*tpl_off), size, output);
-	for(size_t i=0; i<size; i++)
-	{
-		if(nodes->nodeTab[i]->type == XML_ELEMENT_NODE)
-		{
-			tex_off[i] = htonl(ftell(output));
-			xmlNodePtr cur_tex = nodes->nodeTab[i];
-			xmlNodePtr cur_tex_header = cur_tex->xmlFirstElementChild(cur_tex);
-			xmlNodePtr cur_pal_header = cur_tex->xmlNextElmentSibling(cur_tex_header);
-			if(cur_tex_header != NULL)
-			{
-				xmlAttrPtr attp = xmlGetProp(cur_tex_header, "format");
-			}
-		}
-	}
-
-
-
-}
-
 int png2tpl(const char *in_fn, const char *out_fn)
 {
-	xmlParserCtxtPtr ctxt = xmlNewParserCtxt();
-	if(ctxt==NULL)
-	{
-		return -1;
-	}
-
-	xmlDocPtr doc = xmlCtxtReadFile(ctxt, filename, NULL, XML_PARSE_DTDVALID);
-	if(doc != NULL && ctxt->valid != 0)
-	{
-		FILE *f = fopen(out_fn, "wb");
-		if(f)
-		{
-			convert_xml_to_tpl(doc, f);
-			fclose(f);
-		}
-	}
-	xmlFreeDoc(doc);
-	xmlFreeParserCtxt(ctxt);
-	return 0;
+	return -31415;	
 }
 
 int tpl2png(const char *in_fn, const char *out_fn)
@@ -274,7 +148,6 @@ int tpl2png(const char *in_fn, const char *out_fn)
 	{
 		return -2;
 	}
-
 
 	tpl_header tpl_h;
 
@@ -325,7 +198,7 @@ int tpl2png(const char *in_fn, const char *out_fn)
 
 			printf("height:   0x%04hx (%d)\n", tex_h[i].height, tex_h[i].height);
 			printf("width:    0x%04hx (%d)\n", tex_h[i].width, tex_h[i].width);
-			printf("format:   0x%08x (%s) (%s)\n", tex_h[i].format, tpl_format(tex_h[i].format), in_fn);
+			printf("format:   0x%08x (%s)\n", tex_h[i].format, tpl_format(tex_h[i].format));
 			printf("data_off: 0x%08x\n", tex_h[i].data_off);
 			printf("wrap_s:   0x%08x\n", tex_h[i].wrap_s);
 			printf("wrap_t:   0x%08x\n", tex_h[i].wrap_t);
@@ -342,9 +215,6 @@ int tpl2png(const char *in_fn, const char *out_fn)
 		{
 			case 5:
 				convertRGB5A3(&tex_h[i], in, out_fn_buffer);
-				break;
-			case 6:
-				convertRGBA8(&tex_h[i], in, out_fn_buffer);
 				break;
 		}
 	}
