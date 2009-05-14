@@ -92,9 +92,9 @@ int convertRGB5A3(texture_header *th, FILE *in, char *out_fn)
 				{
 					// RGB5
 					int colour = gdImageColorResolve(im,
-						rt.pixels[i].RGB5.r*255/31,
+						rt.pixels[i].RGB5.b*255/31,
 						rt.pixels[i].RGB5.g*255/31,
-						rt.pixels[i].RGB5.b*255/31);
+						rt.pixels[i].RGB5.r*255/31);
 					gdImageSetPixel(im, x+i%4, y+i/4, colour); 
 					
 				}
@@ -102,9 +102,9 @@ int convertRGB5A3(texture_header *th, FILE *in, char *out_fn)
 				{
 					// RGB4A3
 					int colour = gdImageColorResolveAlpha(im,
-						rt.pixels[i].RGB4A3.r*255/15,
-						rt.pixels[i].RGB4A3.g*255/15,
 						rt.pixels[i].RGB4A3.b*255/15,
+						rt.pixels[i].RGB4A3.g*255/15,
+						rt.pixels[i].RGB4A3.r*255/15,
 						255-(rt.pixels[i].RGB4A3.a*255/7));
 					gdImageSetPixel(im, x+i%4, y+i/4, colour); 
 				}
