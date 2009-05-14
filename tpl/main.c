@@ -67,6 +67,9 @@ int convertRGB5A3(texture_header *th, FILE *in, char *out_fn)
 
 	if(th == NULL) return -1;
 
+	gdImageAlphaBlending(im, 0);
+	gdImageSaveAlpha(im, 1);
+
 	FILE *out = fopen(out_fn, "wb");
 	if(out == NULL)
 	{
@@ -102,7 +105,7 @@ int convertRGB5A3(texture_header *th, FILE *in, char *out_fn)
 						rt.pixels[i].RGB4A3.r*255/15,
 						rt.pixels[i].RGB4A3.g*255/15,
 						rt.pixels[i].RGB4A3.b*255/15,
-						rt.pixels[i].RGB4A3.a*255/7);
+						255-(rt.pixels[i].RGB4A3.a*255/7));
 					gdImageSetPixel(im, x+i%4, y+i/4, colour); 
 				}
 			}
